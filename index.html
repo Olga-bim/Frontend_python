@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="display"></div>
+    <hr>
+
+    <!-- добавление новой категории -->
+    <div>
+        <h3>Add New Category</h3>
+        Name: <input id="CategoryName"> <br>
+        Description: <input id="CategoryDescription"> <br>
+        <button onclick="addCategory()">Add Category</button>
+    </div>
+
+    <!-- добавление нового продукта -->
+    <div>
+        <h3>Add New Product</h3>
+        Name: <input id="ProductName"> <br>
+        Categories: <select id="CategorySelect"></select> <br>
+        Description: <input id="ProductDescription"> <br>
+        Price: <input id="ProductPrice"> <br>
+        <button onclick="addProduct()">Add Product</button>
+    </div>
+
+    <hr>
+    
+    <!-- отображение продуктов -->
+    <div>
+        <h3>Products by Category</h3>
+        Categories: <select id="CategoryFilter" onchange="filterProducts()"></select> <br>
+        <div id="ProductsDisplay"></div>
+    </div>
+
+    <script>
+        const SERVER = "http://127.0.0.1:5000";
+
+        async function getCategories() {
+            try {
+                const response = await axios.get(`${SERVER}/categories`);
+                const categories = response.data;
+                const categorySelect = document.getElementById('CategorySelect');
+                const categoryFilter = document.getElementById('CategoryFilter');
+
+                // Очистка выпадающих списков
+                categorySelect.innerHTML = '';
+                categoryFilter.innerHTML = '';
+
+                if (categories.length > 0) {
+                    // Добавление категорий в оба выпадающих списка
+                    categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.name;
+                        categorySelect.appendChild(option);
+
+                        const filterOption = document.createElement('option');
+                        filterOption.value = category.id;
+                        filterOption.textContent = category.name;
+                        categoryFilter.appendChild(filterOption);
+                    });
+
+                    // Загрузка продуктов для первой категории
+                    filterProducts(); 
+                } else {
+                    console.log('No categories found');
+                }
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            }
+        }
+
+        async function filterProducts() {
+            const categoryId = document.getElementById('CategoryFilter').value;
+            try {
+                const response = await axios.get(`${SERVER}/products/category/${categoryId}`);
+                const products = response.data;
+                displayProducts(products);
+            } catch (error) {
+                console.error('Error fetching products:', error);
+            }
+        }
+
+        async function addCategory() {
+            const name = document.getElementById('CategoryName').value;
+            const description = document.getElementById('CategoryDescription').value;
+            try {
+                await axios.post(`${SERVER}/categories`, { name, description });
+                alert('Category added successfully!');
+                getCategories(); // Обновление списка категорий
+            } catch (error) {
+                console.error('Error adding category:', error);
+            }
+        }
+
+        async function addProduct() {
+            const name = document.getElementById('ProductName').value;
+            const description = document.getElementById('ProductDescription').value;
+            const price = parseFloat(document.getElementById('ProductPrice').value);
+            const categoryId = parseInt(document.getElementById('CategorySelect').value);
+
+            if (isNaN(price) || isNaN(categoryId)) {
+                alert('Please provide valid values for price and category.');
+                return;
+            }
+
+            try {
+                await axios.post(`${SERVER}/products`, { name, description, price, category_id: categoryId });
+                alert('Product added successfully!');
+                filterProducts(); // Обновление списка продуктов
+            } catch (error) {
+                console.error('Error adding product:', error);
+            }
+        }
+
+        function displayProducts(products) {
+            const productsDisplay = document.getElementById('ProductsDisplay');
+            productsDisplay.innerHTML = '';
+
+            if (products.length > 0) {
+                products.forEach(product => {
+                    productsDisplay.innerHTML += `
+                        <div>
+                            <h4>${product.name}</h4>
+                            <p>Description: ${product.description}</p>
+                            <p>Price: $${product.price}</p>
+                            <p>Category: ${product.category}</p>
+                        </div>
+                    `;
+                });
+            } else {
+                productsDisplay.innerHTML = '<p>No products found for this category.</p>';
+            }
+        }
+
+        // Инициализация
+        getCategories();
+    </script>
+</body>
+</html>
